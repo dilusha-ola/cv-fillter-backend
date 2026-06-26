@@ -52,12 +52,12 @@ def analyze_cv_with_llm(
     
     # 3. Instantiate LLM based on configured provider
     provider = settings.LLM_PROVIDER.lower()
-    if provider in ["grok", "xai"]:
+    if provider == "groq":
         llm = ChatOpenAI(
-            model=settings.GROK_MODEL,
+            model=settings.GROQ_MODEL,
             temperature=0.0,
-            openai_api_key=api_key or settings.GROK_API_KEY,
-            base_url="https://api.x.ai/v1"
+            openai_api_key=api_key or settings.GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1"
         )
     else:
         llm = ChatOpenAI(
@@ -66,8 +66,8 @@ def analyze_cv_with_llm(
             openai_api_key=api_key or settings.OPENAI_API_KEY
         )
     
-    # 4. Bind strict Pydantic model for output parsing
-    structured_llm = llm.with_structured_output(CVAnalysisResponse)
+    # 4. Bind strict Pydantic model for output parsing (use function_calling for Groq compatibility)
+    structured_llm = llm.with_structured_output(CVAnalysisResponse, method="function_calling")
     
     # 5. Create chain & execute
     chain = prompt | structured_llm

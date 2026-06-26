@@ -5,10 +5,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     
-    GROK_API_KEY: str = ""
-    GROK_MODEL: str = "grok-beta"
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
     
-    LLM_PROVIDER: str = "grok"
+    LLM_PROVIDER: str = "groq"
     EMBEDDING_PROVIDER: str = "huggingface"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     

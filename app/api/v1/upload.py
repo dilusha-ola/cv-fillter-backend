@@ -23,12 +23,12 @@ async def upload_cv(
             api_key = authorization.split(" ")[1]
             
         if not api_key:
-            if settings.EMBEDDING_PROVIDER.lower() in ["grok", "xai"]:
-                api_key = settings.GROK_API_KEY
+            if settings.EMBEDDING_PROVIDER.lower() in ["groq"]:
+                api_key = settings.GROQ_API_KEY
             else:
                 api_key = settings.OPENAI_API_KEY
                 
-        if not api_key or api_key in ["your_openai_api_key_here", "your_grok_api_key_here"]:
+        if not api_key or api_key in ["your_openai_api_key_here", "your_groq_api_key_here"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"API key for {settings.EMBEDDING_PROVIDER} must be provided in the Authorization header or set in the backend environment variables."

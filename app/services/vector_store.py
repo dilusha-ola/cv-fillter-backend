@@ -19,12 +19,12 @@ def get_embeddings(api_key: str = None):
             model_kwargs={"device": "cpu"},
             encode_kwargs={"normalize_embeddings": True}
         )
-    elif provider in ["grok", "xai"]:
-        # xAI compatible embeddings
+    elif provider == "groq":
+        # Groq compatible embeddings
         return OpenAIEmbeddings(
             model=settings.EMBEDDING_MODEL,
-            openai_api_key=api_key or settings.GROK_API_KEY,
-            openai_api_base="https://api.x.ai/v1"
+            openai_api_key=api_key or settings.GROQ_API_KEY,
+            openai_api_base="https://api.groq.com/openai/v1"
         )
     else:
         # Standard OpenAI embeddings
