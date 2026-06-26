@@ -16,19 +16,23 @@ async def upload_cv(
     Accepts a CV file (PDF or DOCX), extracts text, chunks it, and 
     generates embeddings to save into the vector store.
     """
-    # 1. Determine OpenAI API Key (either from request header or .env)
+    # 1. Determine API Key if using cloud embeddings
     api_key = None
-    if authorization and authorization.startswith("Bearer "):
-        api_key = authorization.split(" ")[1]
-        
-    if not api_key:
-        api_key = settings.OPENAI_API_KEY
-        
-    if not api_key or api_key == "your_openai_api_key_here":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="OpenAI API key must be provided in the Authorization header or set in the backend environment variables."
-        )
+    if settings.EMBEDDING_PROVIDER.lower() != "huggingface":
+        if authorization and authorization.startswith("Bearer "):
+            api_key = authorization.split(" ")[1]
+            
+        if not api_key:
+            if settings.EMBEDDING_PROVIDER.lower() in ["grok", "xai"]:
+                api_key = settings.GROK_API_KEY
+            else:
+                api_key = settings.OPENAI_API_KEY
+                
+        if not api_key or api_key in ["your_openai_api_key_here", "your_grok_api_key_here"]:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"API key for {settings.EMBEDDING_PROVIDER} must be provided in the Authorization header or set in the backend environment variables."
+            )
         
     # 2. Validate file format extension
     filename = file.filename
@@ -62,7 +66,7 @@ async def upload_cv(
         vector_store.create_and_save_vector_store(
             chunks=chunks,
             cv_id=cv_id,
-            openai_api_key=api_key
+            api_key=api_key
         )
         
         return {

@@ -15,18 +15,21 @@ async def analyze_cv(
     Analyzes an indexed CV using hybrid context retrieval and LangChain LLM evaluation 
     against a target position, JD, and a list of strict screening criteria.
     """
-    # 1. Determine OpenAI API Key (either from request header or .env)
+    # 1. Determine LLM API Key (either from request header or .env)
     api_key = None
     if authorization and authorization.startswith("Bearer "):
         api_key = authorization.split(" ")[1]
         
     if not api_key:
-        api_key = settings.OPENAI_API_KEY
-        
-    if not api_key or api_key == "your_openai_api_key_here":
+        if settings.LLM_PROVIDER.lower() in ["grok", "xai"]:
+            api_key = settings.GROK_API_KEY
+        else:
+            api_key = settings.OPENAI_API_KEY
+            
+    if not api_key or api_key in ["your_openai_api_key_here", "your_grok_api_key_here"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="OpenAI API key must be provided in the Authorization header or set in the backend environment variables."
+            detail=f"API key for {settings.LLM_PROVIDER} must be provided in the Authorization header or set in the backend environment variables."
         )
         
     try:
@@ -36,7 +39,7 @@ async def analyze_cv(
             position=request.position,
             jd=request.jd,
             conditions=request.conditions,
-            openai_api_key=api_key
+            api_key=api_key
         )
         
         if not chunks:
@@ -51,7 +54,7 @@ async def analyze_cv(
             position=request.position,
             jd=request.jd,
             conditions=request.conditions,
-            openai_api_key=api_key
+            api_key=api_key
         )
         
         return evaluation
