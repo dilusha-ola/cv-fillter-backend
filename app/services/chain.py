@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from app.schemas.response import CVAnalysisResponse
+from app.core.config import settings
 from typing import List
 from langchain_core.documents import Document
 
@@ -9,11 +10,11 @@ def analyze_cv_with_llm(
     position: str,
     jd: str,
     conditions: List[str],
-    openai_api_key: str
+    api_key: str
 ) -> CVAnalysisResponse:
     """
     Combines retrieved CV chunks, prompt inputs, and strict criteria to produce
-    a type-safe, validated screening report from GPT-4o-mini using structured outputs.
+    a type-safe, validated screening report from the selected LLM provider.
     """
     # 1. Format retrieved CV context chunks
     context_text = "\n\n---\n\n".join([
@@ -49,12 +50,21 @@ def analyze_cv_with_llm(
     # Format conditions as a list
     conditions_list_str = "\n".join([f"- {c}" for c in conditions])
     
-    # 3. Instantiate OpenAI Chat model
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.0,
-        openai_api_key=openai_api_key
-    )
+    # 3. Instantiate LLM based on configured provider
+    provider = settings.LLM_PROVIDER.lower()
+    if provider in ["grok", "xai"]:
+        llm = ChatOpenAI(
+            model=settings.GROK_MODEL,
+            temperature=0.0,
+            openai_api_key=api_key or settings.GROK_API_KEY,
+            base_url="https://api.x.ai/v1"
+        )
+    else:
+        llm = ChatOpenAI(
+            model=settings.OPENAI_MODEL,
+            temperature=0.0,
+            openai_api_key=api_key or settings.OPENAI_API_KEY
+        )
     
     # 4. Bind strict Pydantic model for output parsing
     structured_llm = llm.with_structured_output(CVAnalysisResponse)
