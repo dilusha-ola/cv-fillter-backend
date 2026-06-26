@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
     
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     
     LLM_PROVIDER: str = "groq"
     EMBEDDING_PROVIDER: str = "huggingface"
