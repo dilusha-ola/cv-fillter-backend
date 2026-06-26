@@ -3,7 +3,14 @@ from typing import List, Literal
 
 class ConditionCheck(BaseModel):
     condition: str = Field(..., description="The screening condition evaluated")
-    status: Literal["PASSED", "FAILED"] = Field(..., description="Status check status: PASSED if met, FAILED if not met")
+    status: Literal["PASSED", "FAILED", "NEUTRAL"] = Field(
+        ...,
+        description=(
+            "PASSED if there is explicit verifiable proof the condition is met (including quantified proof for numeric requirements); "
+            "FAILED if the CV clearly does not meet the requirement; "
+            "NEUTRAL if the candidate mentions the skill but lacks explicit proof of the quantity or duration required."
+        )
+    )
     evidence: str = Field(..., description="Direct quote or clear evidence found from the CV context")
 
 class CVAnalysisResponse(BaseModel):
