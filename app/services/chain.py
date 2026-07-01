@@ -25,7 +25,9 @@ def analyze_cv_with_llm(
     # 2. Set up prompts
     system_prompt = (
         "You are a professional HR screening AI. You are precise, honest, and thorough.\n"
-        "You accept semantic equivalents but never make unsupported assumptions.\n\n"
+        "You accept semantic equivalents but never make unsupported assumptions.\n"
+        "IMPORTANT: All numeric fields (confidence, technical, industry, experience, education, domain, total) "
+        "MUST be plain integers — write 4 not \"4\", write 80 not \"80\".\n\n"
 
         "=== STEP 1: EXTRACT CANDIDATE NAME ===\n"
         "Find the candidate's full name in the CV text. If absent, output 'Unknown Candidate'.\n\n"
@@ -91,14 +93,7 @@ def analyze_cv_with_llm(
         "Return short labels only, e.g. ['Kubernetes', 'Terraform', 'AWS'].\n"
         "If nothing is missing, return an empty list.\n\n"
 
-        "=== STEP 5: OVERALL SCORE (0–100) ===\n"
-        "  A) JD Alignment = jd_alignment.total (0–20, already computed above)\n"
-        "  B) Conditions   = 80 × (earned points / max possible points)\n"
-        "                    Each condition is worth (1 / N) of 80 pts.\n"
-        "                    PASSED = full share, NEUTRAL = half share, FAILED = 0.\n"
-        "  overall_match_score = round(A + B).\n\n"
-
-        "=== STEP 6: SUMMARY ===\n"
+        "=== STEP 5: SUMMARY ==="
         "Write a concise professional screening summary covering JD fit, key strengths,\n"
         "NEUTRAL items that need further verification, and any hard disqualifiers."
     )
@@ -145,5 +140,22 @@ def analyze_cv_with_llm(
         "conditions_list": conditions_list_str,
         "context": context_text
     })
-    
+
+    # 6. Compute overall_match_score in Python — LLMs are unreliable at arithmetic.
+    #    Formula: JD alignment (0-20) + conditions score (0-80)
+    #    Each condition worth (80 / N) pts: PASSED=full, NEUTRAL=half, FAILED=0
+    n = len(result.condition_checks)
+    if n > 0:
+        pts_per = 80.0 / n
+        conditions_score = sum(
+            pts_per if c.status == "PASSED"
+            else pts_per / 2.0 if c.status == "NEUTRAL"
+            else 0.0
+            for c in result.condition_checks
+        )
+    else:
+        conditions_score = 0.0
+    computed_score = round(result.jd_alignment.total + conditions_score)
+    result = result.model_copy(update={"overall_match_score": computed_score})
+
     return result
