@@ -3,7 +3,7 @@ import uuid
 import os
 import shutil
 from app.core.config import settings
-from app.services import document, vector_store
+from app.services import document, vector_store, scraper
 
 router = APIRouter()
 
@@ -56,15 +56,33 @@ async def upload_cv(
         with open(temp_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # 6. Extract text and segment into chunks
-        chunks = document.load_and_chunk_document(temp_file_path)
-        
-        if not chunks:
+        # 6. Extract URLs via two methods:
+        #    a) regex on visible text  (catches written-out URLs)
+        #    b) PDF/DOCX annotations  (catches URLs behind icons/images)
+        full_text = document.load_document_text(temp_file_path)
+        text_urls = scraper.extract_urls_from_text(full_text)
+        embedded_urls = document.extract_embedded_urls(temp_file_path)
+        # Merge both sources, deduplicate, preserve order
+        all_urls = list(dict.fromkeys(text_urls + embedded_urls))
+
+        # 7. Scrape discovered URLs concurrently (GitHub API, portfolios, etc.)
+        web_data = await scraper.scrape_links(all_urls)
+
+        # 8. Chunk the CV document
+        cv_chunks = document.load_and_chunk_document(temp_file_path)
+
+        if not cv_chunks:
             raise ValueError("No readable text content could be extracted from the uploaded document.")
-            
-        # 7. Embed chunks and save vector index
+
+        # 9. Combine CV chunks with web profile chunks (if any URLs were found)
+        all_chunks = cv_chunks
+        if web_data:
+            web_chunks = document.text_to_chunks(web_data, source="web_profiles")
+            all_chunks = cv_chunks + web_chunks
+
+        # 10. Embed all chunks and save to the vector index
         vector_store.create_and_save_vector_store(
-            chunks=chunks,
+            chunks=all_chunks,
             cv_id=cv_id,
             api_key=api_key
         )

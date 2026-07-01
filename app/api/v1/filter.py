@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Header, HTTPException, status
 from app.schemas.request import FilterRequest
 from app.schemas.response import CVAnalysisResponse
-from app.services import vector_store, chain, scraper
+from app.services import vector_store, chain
 from app.core.config import settings
 
 router = APIRouter()
@@ -48,17 +48,15 @@ async def analyze_cv(
                 detail=f"No CV text context found for CV ID: {request.cv_id} to evaluate."
             )
 
-        # 3. Scrape any provided profile / portfolio links concurrently
-        web_profile_data = await scraper.scrape_links(request.links or [])
-
-        # 4. Analyze CV context chunks (+ web data) against the JD and criteria
+        # 3. Analyze CV context chunks against the JD and criteria
+        #    (Web profile data is already embedded as chunks from the upload step)
         evaluation = chain.analyze_cv_with_llm(
             retrieved_chunks=chunks,
             position=request.position,
             jd=request.jd,
             conditions=request.conditions,
             api_key=api_key,
-            web_profile_data=web_profile_data,
+            web_profile_data="",
         )
         
         return evaluation

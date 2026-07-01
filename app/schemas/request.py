@@ -1,12 +1,8 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 
 class FilterRequest(BaseModel):
     cv_id: str = Field(..., description="Unique UUID of the uploaded CV vector store")
     position: str = Field(..., description="Target Job Position")
     jd: str = Field(..., description="Full Job Description details")
     conditions: List[str] = Field(..., description="Strict criteria to evaluate candidate against")
-    links: Optional[List[str]] = Field(
-        default=None,
-        description="Optional profile/portfolio URLs (GitHub, LinkedIn, personal site) to scrape as supplementary evidence",
-    )

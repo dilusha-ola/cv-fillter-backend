@@ -14,6 +14,26 @@ def _normalize_url(url: str) -> str:
     return url
 
 
+# Matches full http(s) URLs and bare github.com / linkedin.com paths
+_URL_RE = re.compile(
+    r"(?:https?://|(?:www\.|github\.com/|linkedin\.com/))\S+",
+    re.IGNORECASE,
+)
+
+
+def extract_urls_from_text(text: str) -> list[str]:
+    """Extract and normalise profile/portfolio URLs found in raw CV text."""
+    seen: set[str] = set()
+    urls: list[str] = []
+    for m in _URL_RE.finditer(text):
+        raw = m.group(0).rstrip(".,;:)\"'>")  # strip trailing punctuation
+        url = _normalize_url(raw)
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+    return urls
+
+
 async def _fetch_github(url: str) -> str:
     """Fetches profile bio, repo list, and language spread via the GitHub public API."""
     username = url.rstrip("/").split("github.com/")[-1].split("/")[0].split("?")[0]
