@@ -13,6 +13,9 @@ def get_embeddings(api_key: str = None):
     """
     provider = settings.EMBEDDING_PROVIDER.lower()
     if provider == "huggingface":
+        # Set HF token to suppress unauthenticated rate-limit warnings
+        if settings.HF_TOKEN and settings.HF_TOKEN != "your_huggingface_token_here":
+            os.environ["HF_TOKEN"] = settings.HF_TOKEN
         # Initialize local HuggingFace embeddings
         return HuggingFaceEmbeddings(
             model_name=settings.EMBEDDING_MODEL,

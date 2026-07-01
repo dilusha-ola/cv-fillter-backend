@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "huggingface"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     
+    HF_TOKEN: str = ""
+
     LANGSMITH_API_KEY: str = ""
     LANGSMITH_TRACING: str = "false"
     PORT: int = 8000
