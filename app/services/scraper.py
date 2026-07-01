@@ -157,6 +157,50 @@ async def _fetch_portfolio(url: str) -> str:
             return f"[Portfolio] Error fetching {url}: {exc}"
 
 
+async def _fetch_github_repo(url: str) -> str:
+    """Fetches details for a specific GitHub repository via the GitHub public API."""
+    path = url.rstrip("/").split("github.com/")[-1]
+    parts = [p for p in path.split("/") if p]
+    if len(parts) < 2:
+        return await _fetch_github(url)
+
+    owner, repo = parts[0], parts[1]
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "CVScreener/1.0",
+    }
+    repo_api = f"https://api.github.com/repos/{owner}/{repo}"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.get(repo_api, headers=headers)
+            if resp.status_code == 200:
+                r = resp.json()
+                lang = r.get("language") or "N/A"
+                desc = (r.get("description") or "")[:200]
+                stars = r.get("stargazers_count", 0)
+                topics = ", ".join(r.get("topics", []))
+                lines = [
+                    f"=== GitHub Repository ({url}) ===",
+                    f"Repo: {r['full_name']}  |  Language: {lang}  |  ★{stars}",
+                ]
+                if desc:
+                    lines.append(f"Description: {desc}")
+                if topics:
+                    lines.append(f"Topics: {topics}")
+                return "\n".join(lines)
+            return f"[GitHub Repo] HTTP {resp.status_code} for: {url}"
+        except Exception as exc:
+            return f"[GitHub Repo] Error fetching {url}: {exc}"
+
+
+def _is_github_repo_url(url: str) -> bool:
+    """Returns True if the URL points to a specific repo (owner/repo), not just a profile."""
+    path = url.rstrip("/").split("github.com/")[-1]
+    parts = [p for p in path.split("/") if p]
+    return len(parts) >= 2
+
+
 async def _linkedin_note(url: str) -> str:
     """LinkedIn blocks scraping; return a minimal note so the LLM knows the URL exists."""
     return (
@@ -173,20 +217,28 @@ async def scrape_links(links: List[str]) -> str:
     Returns combined text ready to be appended to the LLM prompt as supplementary context.
 
     Supported link types:
-      - github.com   → GitHub public API (repos, bio, languages)
-      - linkedin.com → URL-only note (scraping blocked)
-      - anything else → HTTP + BeautifulSoup full-page text
+      - github.com/user       → GitHub profile API (bio, repos, languages)
+      - github.com/user/repo  → GitHub repo API (description, language, topics)
+      - linkedin.com          → URL-only note (scraping blocked)
+      - anything else         → HTTP + BeautifulSoup full-page text
     """
     if not links:
         return ""
 
     tasks = []
     for raw in links:
-        link = _normalize_url(raw)  # handles missing https:// scheme
-        if not link:
+        # Skip non-HTTP schemes (mailto:, tel:, etc.)
+        stripped = raw.strip()
+        if stripped.startswith(("mailto:", "tel:", "sms:", "fax:")):
+            continue
+        link = _normalize_url(stripped)
+        if not link or not link.startswith(("http://", "https://")):
             continue
         if "github.com" in link:
-            tasks.append(_fetch_github(link))
+            if _is_github_repo_url(link):
+                tasks.append(_fetch_github_repo(link))
+            else:
+                tasks.append(_fetch_github(link))
         elif "linkedin.com" in link:
             tasks.append(_linkedin_note(link))
         else:

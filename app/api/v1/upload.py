@@ -65,8 +65,17 @@ async def upload_cv(
         # Merge both sources, deduplicate, preserve order
         all_urls = list(dict.fromkeys(text_urls + embedded_urls))
 
+        print(f"[UPLOAD] CV ID: {cv_id}")
+        print(f"[UPLOAD] URLs found in text:      {text_urls}")
+        print(f"[UPLOAD] URLs found in hyperlinks: {embedded_urls}")
+        print(f"[UPLOAD] All unique URLs to scrape: {all_urls}")
+
         # 7. Scrape discovered URLs concurrently (GitHub API, portfolios, etc.)
         web_data = await scraper.scrape_links(all_urls)
+
+        print(f"[UPLOAD] Web data scraped ({len(web_data)} chars): {'YES' if web_data else 'NONE'}")
+        if web_data:
+            print(f"[UPLOAD] Full web data scraped:\n{web_data}")
 
         # 8. Chunk the CV document
         cv_chunks = document.load_and_chunk_document(temp_file_path)
