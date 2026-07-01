@@ -10,11 +10,14 @@ def analyze_cv_with_llm(
     position: str,
     jd: str,
     conditions: List[str],
-    api_key: str
+    api_key: str,
+    web_profile_data: str = "",
 ) -> CVAnalysisResponse:
     """
     Combines retrieved CV chunks, prompt inputs, and strict criteria to produce
     a type-safe, validated screening report from the selected LLM provider.
+    Optional web_profile_data (GitHub repos, portfolio text) is appended as
+    supplementary evidence alongside the CV context.
     """
     # 1. Format retrieved CV context chunks
     context_text = "\n\n---\n\n".join([
@@ -27,7 +30,9 @@ def analyze_cv_with_llm(
         "You are a professional HR screening AI. You are precise, honest, and thorough.\n"
         "You accept semantic equivalents but never make unsupported assumptions.\n"
         "IMPORTANT: All numeric fields (confidence, technical, industry, experience, education, domain, total) "
-        "MUST be plain integers — write 4 not \"4\", write 80 not \"80\".\n\n"
+        "MUST be plain integers \u2014 write 4 not \"4\", write 80 not \"80\".\n"
+        "If 'Additional Web Profile Data' is provided (GitHub repos, portfolio content), treat it as "
+        "supplementary CV evidence with equal weight to the uploaded CV text.\n\n"
 
         "=== STEP 1: EXTRACT CANDIDATE NAME ===\n"
         "Find the candidate's full name in the CV text. If absent, output 'Unknown Candidate'.\n\n"
@@ -104,13 +109,21 @@ def analyze_cv_with_llm(
             "Target Job Position: {position}\n\n"
             "Job Description (JD):\n{jd}\n\n"
             "Strict Conditions to Check:\n{conditions_list}\n\n"
-            "CV Context Snippets:\n{context}\n\n"
+            "CV Context Snippets (primary source):\n{context}\n\n"
+            "{web_profile_section}"
             "Please perform the evaluation and return the structured response."
         ))
     ])
     
     # Format conditions as a list
     conditions_list_str = "\n".join([f"- {c}" for c in conditions])
+
+    # Build optional web profile section
+    web_profile_section = ""
+    if web_profile_data and web_profile_data.strip():
+        web_profile_section = (
+            f"Additional Web Profile Data (GitHub / Portfolio):\n{web_profile_data}\n\n"
+        )
     
     # 3. Instantiate LLM based on configured provider
     provider = settings.LLM_PROVIDER.lower()
@@ -138,7 +151,8 @@ def analyze_cv_with_llm(
         "position": position,
         "jd": jd,
         "conditions_list": conditions_list_str,
-        "context": context_text
+        "context": context_text,
+        "web_profile_section": web_profile_section,
     })
 
     # 6. Compute overall_match_score in Python — LLMs are unreliable at arithmetic.

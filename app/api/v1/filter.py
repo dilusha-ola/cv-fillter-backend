@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Header, HTTPException, status
 from app.schemas.request import FilterRequest
 from app.schemas.response import CVAnalysisResponse
-from app.services import vector_store, chain
+from app.services import vector_store, chain, scraper
 from app.core.config import settings
 
 router = APIRouter()
@@ -47,18 +47,22 @@ async def analyze_cv(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No CV text context found for CV ID: {request.cv_id} to evaluate."
             )
-            
-        # 3. Analyze CV context chunks against the JD and criteria using the LLM
+
+        # 3. Scrape any provided profile / portfolio links concurrently
+        web_profile_data = await scraper.scrape_links(request.links or [])
+
+        # 4. Analyze CV context chunks (+ web data) against the JD and criteria
         evaluation = chain.analyze_cv_with_llm(
             retrieved_chunks=chunks,
             position=request.position,
             jd=request.jd,
             conditions=request.conditions,
-            api_key=api_key
+            api_key=api_key,
+            web_profile_data=web_profile_data,
         )
         
         return evaluation
-        
+
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
